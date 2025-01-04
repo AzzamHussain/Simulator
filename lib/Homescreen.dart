@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:simulator/utils/utils.dart';
 import '../simulation/simulator.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -20,22 +19,37 @@ class _HomeScreenState extends State<HomeScreen> {
   int _serviceDistributionChoice = 1;
 
   String _simulationResult = "";
+  List<Map<String, dynamic>> tableData = [];
   List<int> interArrivals = [];
 
   void _runSimulation(String simulationType) {
     setState(() {
+      // Generate data for the simulation
+      interArrivals = generateTimes(100, _arrivalDistributionChoice,
+          double.tryParse(_meanController.text) ?? 5.0, double.tryParse(_stdDevController.text) ?? 1.0);
+
+      List<int> serviceTimes = generateTimes(100, _serviceDistributionChoice,
+          double.tryParse(_meanController.text) ?? 5.0, double.tryParse(_stdDevController.text) ?? 1.0);
+
+      // Populate table data
+      tableData = List.generate(interArrivals.length, (index) {
+        return {
+          'Customer': index + 1,
+          'Arrival Time': interArrivals[index],
+          'Service Time': serviceTimes[index],
+        };
+      });
+
+      // Run the simulation logic
       _simulationResult = runSimulation(
         simulationType: simulationType,
         endTime: int.tryParse(_endTimeController.text) ?? 100,
         arrivalDistributionChoice: _arrivalDistributionChoice,
         serviceDistributionChoice: _serviceDistributionChoice,
-        mean: double.tryParse(_meanController.text) ?? 0.0,
-        stdDev: double.tryParse(_stdDevController.text) ?? 0.0,
+        mean: double.tryParse(_meanController.text) ?? 5.0,
+        stdDev: double.tryParse(_stdDevController.text) ?? 1.0,
         numServers: int.tryParse(_numServersController.text) ?? 1,
       );
-
-      // Retrieve inter-arrival times for the graph
-      interArrivals = getArrivalTimes(_arrivalDistributionChoice, int.tryParse(_endTimeController.text) ?? 100)['interArrivals']!;
     });
   }
 
@@ -81,22 +95,10 @@ class _HomeScreenState extends State<HomeScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  ElevatedButton(
-                    onPressed: () => setState(() => _arrivalDistributionChoice = 1),
-                    child: const Text('Exponential'),
-                  ),
-                  ElevatedButton(
-                    onPressed: () => setState(() => _arrivalDistributionChoice = 2),
-                    child: const Text('Normal'),
-                  ),
-                  ElevatedButton(
-                    onPressed: () => setState(() => _arrivalDistributionChoice = 3),
-                    child: const Text('Gamma'),
-                  ),
-                  ElevatedButton(
-                    onPressed: () => setState(() => _arrivalDistributionChoice = 4),
-                    child: const Text('Uniform'),
-                  ),
+                  ElevatedButton(onPressed: () => setState(() => _arrivalDistributionChoice = 1), child: const Text('Exponential')),
+                  ElevatedButton(onPressed: () => setState(() => _arrivalDistributionChoice = 2), child: const Text('Normal')),
+                  ElevatedButton(onPressed: () => setState(() => _arrivalDistributionChoice = 3), child: const Text('Gamma')),
+                  ElevatedButton(onPressed: () => setState(() => _arrivalDistributionChoice = 4), child: const Text('Uniform')),
                 ],
               ),
               const SizedBox(height: 16),
@@ -107,22 +109,10 @@ class _HomeScreenState extends State<HomeScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  ElevatedButton(
-                    onPressed: () => setState(() => _serviceDistributionChoice = 1),
-                    child: const Text('Exponential'),
-                  ),
-                  ElevatedButton(
-                    onPressed: () => setState(() => _serviceDistributionChoice = 2),
-                    child: const Text('Normal'),
-                  ),
-                  ElevatedButton(
-                    onPressed: () => setState(() => _serviceDistributionChoice = 3),
-                    child: const Text('Gamma'),
-                  ),
-                  ElevatedButton(
-                    onPressed: () => setState(() => _serviceDistributionChoice = 4),
-                    child: const Text('Uniform'),
-                  ),
+                  ElevatedButton(onPressed: () => setState(() => _serviceDistributionChoice = 1), child: const Text('Exponential')),
+                  ElevatedButton(onPressed: () => setState(() => _serviceDistributionChoice = 2), child: const Text('Normal')),
+                  ElevatedButton(onPressed: () => setState(() => _serviceDistributionChoice = 3), child: const Text('Gamma')),
+                  ElevatedButton(onPressed: () => setState(() => _serviceDistributionChoice = 4), child: const Text('Uniform')),
                 ],
               ),
               const SizedBox(height: 16),
@@ -153,9 +143,66 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: const Text('First-Come-First-Serve Simulation'),
               ),
               const SizedBox(height: 16),
-              Text(
-                _simulationResult,
-                style: const TextStyle(fontSize: 16),
+              const Text(
+                'Simulation Results:',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Text(_simulationResult, style: const TextStyle(fontSize: 16)),
+              const SizedBox(height: 16),
+              const Text(
+                'Data Table:',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              DataTable(
+                columns: const [
+                  DataColumn(label: Text('Customer')),
+                  DataColumn(label: Text('Arrival Time')),
+                  DataColumn(label: Text('Service Time')),
+                ],
+                rows: tableData
+                    .map(
+                      (row) => DataRow(cells: [
+                        DataCell(Text(row['Customer'].toString())),
+                        DataCell(Text(row['Arrival Time'].toString())),
+                        DataCell(Text(row['Service Time'].toString())),
+                      ]),
+                    )
+                    .toList(),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Inter-Arrival Times Histogram:',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 300,
+                child: BarChart(
+                  BarChartData(
+                    barGroups: interArrivals.asMap().entries.map((entry) {
+                      int key = entry.key;
+                      int value = entry.value;
+                      return BarChartGroupData(
+                        x: key,
+                        barRods: [
+                          BarChartRodData(toY: value.toDouble(), color: Colors.blue),
+                        ],
+                      );
+                    }).toList(),
+                    titlesData: FlTitlesData(
+                      leftTitles: AxisTitles(
+                        sideTitles: SideTitles(showTitles: true),
+                      ),
+                      bottomTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          getTitlesWidget: (value, meta) => Text(value.toInt().toString()),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               ),
             ],
           ),
