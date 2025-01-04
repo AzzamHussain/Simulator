@@ -18,30 +18,17 @@ class _HomeScreenState extends State<HomeScreen> {
   int _arrivalDistributionChoice = 1;
   int _serviceDistributionChoice = 1;
 
-  String _simulationResult = "";
-  List<Map<String, dynamic>> tableData = [];
+  List<Map<String, dynamic>> customerDetails = [];
+  List<Map<String, dynamic>> finalCustomerTable = [];
+  List<Map<String, dynamic>> averageMetrics = [];
+  List<Map<String, dynamic>> averageMetricsByPriority = [];
+  List<Map<String, dynamic>> serverUtilization = [];
+  List<Map<String, dynamic>> averageQueuingMetrics = [];
   List<int> interArrivals = [];
 
   void _runSimulation(String simulationType) {
     setState(() {
-      // Generate data for the simulation
-      interArrivals = generateTimes(100, _arrivalDistributionChoice,
-          double.tryParse(_meanController.text) ?? 5.0, double.tryParse(_stdDevController.text) ?? 1.0);
-
-      List<int> serviceTimes = generateTimes(100, _serviceDistributionChoice,
-          double.tryParse(_meanController.text) ?? 5.0, double.tryParse(_stdDevController.text) ?? 1.0);
-
-      // Populate table data
-      tableData = List.generate(interArrivals.length, (index) {
-        return {
-          'Customer': index + 1,
-          'Arrival Time': interArrivals[index],
-          'Service Time': serviceTimes[index],
-        };
-      });
-
-      // Run the simulation logic
-      _simulationResult = runSimulation(
+      final tables = runSimulationWithTables(
         simulationType: simulationType,
         endTime: int.tryParse(_endTimeController.text) ?? 100,
         arrivalDistributionChoice: _arrivalDistributionChoice,
@@ -50,7 +37,84 @@ class _HomeScreenState extends State<HomeScreen> {
         stdDev: double.tryParse(_stdDevController.text) ?? 1.0,
         numServers: int.tryParse(_numServersController.text) ?? 1,
       );
+
+      // Update tables and inter-arrival times
+      customerDetails = tables['customerDetails'] ?? [];
+      finalCustomerTable = tables['finalCustomerTable'] ?? [];
+      averageMetrics = tables['averageMetrics'] ?? [];
+      averageMetricsByPriority = tables['averageMetricsByPriority'] ?? [];
+      serverUtilization = tables['serverUtilization'] ?? [];
+      averageQueuingMetrics = tables['averageQueuingMetrics'] ?? [];
+      interArrivals = customerDetails.map((row) => row["Inter Arrivals"] as int).toList();
     });
+  }
+
+  Widget _buildTable(String title, List<Map<String, dynamic>> data, List<String> columns) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: DataTable(
+            columns: columns.map((col) => DataColumn(label: Text(col))).toList(),
+            rows: data
+                .map(
+                  (row) => DataRow(
+                    cells: columns.map((col) => DataCell(Text(row[col]?.toString() ?? ''))).toList(),
+                  ),
+                )
+                .toList(),
+          ),
+        ),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
+  Widget _buildGraph() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Text(
+          'Inter-Arrival Times Histogram:',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          height: 300,
+          child: BarChart(
+            BarChartData(
+              barGroups: interArrivals.asMap().entries.map((entry) {
+                int key = entry.key;
+                int value = entry.value;
+                return BarChartGroupData(
+                  x: key,
+                  barRods: [
+                    BarChartRodData(toY: value.toDouble(), color: Colors.blue),
+                  ],
+                );
+              }).toList(),
+              titlesData: FlTitlesData(
+                leftTitles: AxisTitles(
+                  sideTitles: SideTitles(showTitles: true),
+                ),
+                bottomTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    getTitlesWidget: (value, meta) => Text(value.toInt().toString()),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   @override
@@ -102,20 +166,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
               const SizedBox(height: 16),
-              const Text(
-                'Choose Service Distribution:',
-                style: TextStyle(fontSize: 16),
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  ElevatedButton(onPressed: () => setState(() => _serviceDistributionChoice = 1), child: const Text('Exponential')),
-                  ElevatedButton(onPressed: () => setState(() => _serviceDistributionChoice = 2), child: const Text('Normal')),
-                  ElevatedButton(onPressed: () => setState(() => _serviceDistributionChoice = 3), child: const Text('Gamma')),
-                  ElevatedButton(onPressed: () => setState(() => _serviceDistributionChoice = 4), child: const Text('Uniform')),
-                ],
-              ),
-              const SizedBox(height: 16),
               TextField(
                 controller: _meanController,
                 decoration: const InputDecoration(
@@ -143,67 +193,32 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: const Text('First-Come-First-Serve Simulation'),
               ),
               const SizedBox(height: 16),
-              const Text(
-                'Simulation Results:',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              Text(_simulationResult, style: const TextStyle(fontSize: 16)),
-              const SizedBox(height: 16),
-              const Text(
-                'Data Table:',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              DataTable(
-                columns: const [
-                  DataColumn(label: Text('Customer')),
-                  DataColumn(label: Text('Arrival Time')),
-                  DataColumn(label: Text('Service Time')),
-                ],
-                rows: tableData
-                    .map(
-                      (row) => DataRow(cells: [
-                        DataCell(Text(row['Customer'].toString())),
-                        DataCell(Text(row['Arrival Time'].toString())),
-                        DataCell(Text(row['Service Time'].toString())),
-                      ]),
-                    )
-                    .toList(),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Inter-Arrival Times Histogram:',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              SizedBox(
-                height: 300,
-                child: BarChart(
-                  BarChartData(
-                    barGroups: interArrivals.asMap().entries.map((entry) {
-                      int key = entry.key;
-                      int value = entry.value;
-                      return BarChartGroupData(
-                        x: key,
-                        barRods: [
-                          BarChartRodData(toY: value.toDouble(), color: Colors.blue),
-                        ],
-                      );
-                    }).toList(),
-                    titlesData: FlTitlesData(
-                      leftTitles: AxisTitles(
-                        sideTitles: SideTitles(showTitles: true),
-                      ),
-                      bottomTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          getTitlesWidget: (value, meta) => Text(value.toInt().toString()),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
+              _buildGraph(),
+              _buildTable("Customer Details", customerDetails, ["S.No", "Inter Arrivals", "Arrival Time", "Service Time", "Priorities"]),
+              _buildTable("Final Customer Table", finalCustomerTable, [
+                "Customer ID",
+                "Arrival Time",
+                "Service Time",
+                "Priority",
+                "Start Time",
+                "End Time",
+                "Turn Around Time",
+                "Wait Time",
+                "Response Time",
+                "Server"
+              ]),
+              _buildTable("Average Metrics", averageMetrics, ["Metric", "Value"]),
+              _buildTable("Average Metrics by Priority", averageMetricsByPriority, [
+                "Priority",
+                "Avg InterArrival Time",
+                "Avg Service Time",
+                "Avg Completion Time",
+                "Avg Turn Around Time",
+                "Avg Wait Time",
+                "Avg Response Time"
+              ]),
+              _buildTable("Server Utilization", serverUtilization, ["Server ID", "Utilization"]),
+              _buildTable("Average Queuing Metrics", averageQueuingMetrics, ["Metric", "Value"]),
             ],
           ),
         ),
