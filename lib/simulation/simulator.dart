@@ -101,15 +101,16 @@ List<int> generateTimes(int count, int distributionChoice, double mean, double s
   List<int> times = [];
 
   for (int i = 0; i < count; i++) {
+    int time = 0; // Initialize time
     switch (distributionChoice) {
       case 1: // Exponential
-        times.add((-mean * log(1 - random.nextDouble())).round());
+        time = (-mean * log(1 - random.nextDouble())).round();
         break;
       case 2: // Normal
         double u1 = random.nextDouble();
         double u2 = random.nextDouble();
         double z = sqrt(-2 * log(u1)) * cos(2 * pi * u2);
-        times.add((mean + z * stdDev).round().abs());
+        time = (mean + z * stdDev).round();
         break;
       case 3: // Gamma
         double k = mean / stdDev;
@@ -118,15 +119,17 @@ List<int> generateTimes(int count, int distributionChoice, double mean, double s
         for (int j = 0; j < k; j++) {
           sum += -theta * log(1 - random.nextDouble());
         }
-        times.add(sum.round());
+        time = sum.round();
         break;
       case 4: // Uniform
-        times.add((random.nextDouble() * (mean + stdDev - (mean - stdDev)) + (mean - stdDev)).round());
+        time = (random.nextDouble() * (mean + stdDev - (mean - stdDev)) + (mean - stdDev)).round();
         break;
       default:
-        times.add(mean.round());
+        time = mean.round();
         break;
     }
+    // Ensure non-negative times
+    times.add(time < 0 ? 0 : time);
   }
 
   return times;
@@ -150,13 +153,16 @@ Map<String, List<Map<String, dynamic>>> runSimulationWithTables({
   // Generate customer list
   List<Customer> customers = List.generate(
     arrivalTimes.length,
-    (i) => Customer(
-      customerId: i + 1,
-      arrivalTime: arrivalTimes[i],
-      burstTime: serviceTimes[i],
-      priority: simulationType == "1" ? Random().nextInt(10) : 0,
-      interArrival: i == 0 ? 0 : arrivalTimes[i] - arrivalTimes[i - 1],
-    ),
+    (i) {
+      int interArrival = i == 0 ? 0 : (arrivalTimes[i] - arrivalTimes[i - 1]);
+      return Customer(
+        customerId: i + 1,
+        arrivalTime: arrivalTimes[i].clamp(0, double.infinity).toInt(),
+        burstTime: serviceTimes[i].clamp(0, double.infinity).toInt(),
+        priority: simulationType == "1" ? Random().nextInt(10) : 0,
+        interArrival: interArrival < 0 ? 0 : interArrival, // Ensure non-negative inter-arrival time
+      );
+    },
   );
 
   // Run simulation
@@ -184,20 +190,20 @@ Map<String, List<Map<String, dynamic>>> runSimulationWithTables({
       "Arrival Time": c.arrivalTime,
       "Service Time": c.burstTime,
       "Priority": c.priority,
-      "Start Time": c.startTime,
-      "End Time": c.endTime,
-      "Turn Around Time": c.turnAroundTime,
-      "Wait Time": c.waitTime,
-      "Response Time": c.responseTime,
+      "Start Time": c.startTime.clamp(0, double.infinity).toInt(),
+      "End Time": c.endTime.clamp(0, double.infinity).toInt(),
+      "Turn Around Time": c.turnAroundTime.clamp(0, double.infinity).toInt(),
+      "Wait Time": c.waitTime.clamp(0, double.infinity).toInt(),
+      "Response Time": c.responseTime.clamp(0, double.infinity).toInt(),
       "Server": c.serverId,
     };
   }).toList();
 
   // Average Metrics Table
   List<Map<String, dynamic>> averageMetrics = [
-    {"Metric": "Avg Turn Around Time", "Value": _calculateAverage(customers.map((c) => c.turnAroundTime).toList())},
-    {"Metric": "Avg Wait Time", "Value": _calculateAverage(customers.map((c) => c.waitTime).toList())},
-    {"Metric": "Avg Response Time", "Value": _calculateAverage(customers.map((c) => c.responseTime).toList())},
+    {"Metric": "Avg Turn Around Time", "Value": _calculateAverage(customers.map((c) => c.turnAroundTime.clamp(0, double.infinity).toInt()).toList())},
+    {"Metric": "Avg Wait Time", "Value": _calculateAverage(customers.map((c) => c.waitTime.clamp(0, double.infinity).toInt()).toList())},
+    {"Metric": "Avg Response Time", "Value": _calculateAverage(customers.map((c) => c.responseTime.clamp(0, double.infinity).toInt()).toList())},
   ];
 
   // Server Utilization Table
