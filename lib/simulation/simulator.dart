@@ -135,6 +135,7 @@ List<int> generateTimes(int count, int distributionChoice, double mean, double s
 /// Runs the simulation and generates the necessary tables.
 Map<String, List<Map<String, dynamic>>> runSimulationWithTables({
   required String simulationType,
+  required int numberOfCustomers, // Input number of customers
   required int endTime,
   required int arrivalDistributionChoice,
   required int serviceDistributionChoice,
@@ -143,8 +144,8 @@ Map<String, List<Map<String, dynamic>>> runSimulationWithTables({
   required int numServers,
 }) {
   // Generate arrival and service times
-  List<int> arrivalTimes = generateTimes(100, arrivalDistributionChoice, mean, stdDev);
-  List<int> serviceTimes = generateTimes(100, serviceDistributionChoice, mean, stdDev);
+  List<int> arrivalTimes = generateTimes(numberOfCustomers, arrivalDistributionChoice, mean, stdDev);
+  List<int> serviceTimes = generateTimes(numberOfCustomers, serviceDistributionChoice, mean, stdDev);
 
   // Generate customer list
   List<Customer> customers = List.generate(
@@ -204,7 +205,7 @@ Map<String, List<Map<String, dynamic>>> runSimulationWithTables({
     int busyTime = customers
         .where((c) => c.serverId == serverId)
         .fold(0, (sum, c) => sum + c.burstTime);
-    double utilization = (busyTime / endTime) * 100;
+    double utilization = ((busyTime / endTime) * 100).clamp(0, 100);
     return {"Server ID": serverId, "Utilization": "${utilization.toStringAsFixed(2)}%"};
   });
 

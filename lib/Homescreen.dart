@@ -12,6 +12,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _endTimeController = TextEditingController();
   final TextEditingController _numServersController = TextEditingController();
+  final TextEditingController _numCustomersController = TextEditingController(); // New controller for number of customers
   final TextEditingController _meanController = TextEditingController();
   final TextEditingController _stdDevController = TextEditingController();
 
@@ -23,13 +24,13 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Map<String, dynamic>> averageMetrics = [];
   List<Map<String, dynamic>> averageMetricsByPriority = [];
   List<Map<String, dynamic>> serverUtilization = [];
-  List<Map<String, dynamic>> averageQueuingMetrics = [];
   List<int> interArrivals = [];
 
   void _runSimulation(String simulationType) {
     setState(() {
       final tables = runSimulationWithTables(
         simulationType: simulationType,
+        numberOfCustomers: int.tryParse(_numCustomersController.text) ?? 100,
         endTime: int.tryParse(_endTimeController.text) ?? 100,
         arrivalDistributionChoice: _arrivalDistributionChoice,
         serviceDistributionChoice: _serviceDistributionChoice,
@@ -41,12 +42,10 @@ class _HomeScreenState extends State<HomeScreen> {
       customerDetails = tables['customerDetails'] ?? [];
       finalCustomerTable = tables['finalCustomerTable'] ?? [];
       averageMetrics = tables['averageMetrics'] ?? [];
-      averageMetricsByPriority = tables['averageMetricsByPriority'] ?? [];
       serverUtilization = tables['serverUtilization'] ?? [];
-      averageQueuingMetrics = tables['averageQueuingMetrics'] ?? [];
       interArrivals = customerDetails
+          .where((row) => row.containsKey("Inter Arrivals") && row["Inter Arrivals"] is int)
           .map((row) => row["Inter Arrivals"] as int)
-          .where((val) => val >= 0) // Avoid negative values
           .toList();
     });
   }
@@ -134,6 +133,15 @@ class _HomeScreenState extends State<HomeScreen> {
               const Text(
                 'Simulation Configuration:',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _numCustomersController,
+                decoration: const InputDecoration(
+                  labelText: 'Number of Customers',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.number,
               ),
               const SizedBox(height: 16),
               TextField(
@@ -228,17 +236,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 "Server"
               ]),
               _buildTable("Average Metrics", averageMetrics, ["Metric", "Value"]),
-              _buildTable("Average Metrics by Priority", averageMetricsByPriority, [
-                "Priority",
-                "Avg InterArrival Time",
-                "Avg Service Time",
-                "Avg Completion Time",
-                "Avg Turn Around Time",
-                "Avg Wait Time",
-                "Avg Response Time"
-              ]),
               _buildTable("Server Utilization", serverUtilization, ["Server ID", "Utilization"]),
-              _buildTable("Average Queuing Metrics", averageQueuingMetrics, ["Metric", "Value"]),
             ],
           ),
         ),
@@ -248,6 +246,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
+    _numCustomersController.dispose();
     _endTimeController.dispose();
     _numServersController.dispose();
     _meanController.dispose();
