@@ -38,7 +38,6 @@ class _HomeScreenState extends State<HomeScreen> {
         numServers: int.tryParse(_numServersController.text) ?? 1,
       );
 
-      // Update tables and inter-arrival times
       customerDetails = tables['customerDetails'] ?? [];
       finalCustomerTable = tables['finalCustomerTable'] ?? [];
       averageMetrics = tables['averageMetrics'] ?? [];
@@ -156,14 +155,32 @@ class _HomeScreenState extends State<HomeScreen> {
                 'Choose Arrival Distribution:',
                 style: TextStyle(fontSize: 16),
               ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  ElevatedButton(onPressed: () => setState(() => _arrivalDistributionChoice = 1), child: const Text('Exponential')),
-                  ElevatedButton(onPressed: () => setState(() => _arrivalDistributionChoice = 2), child: const Text('Normal')),
-                  ElevatedButton(onPressed: () => setState(() => _arrivalDistributionChoice = 3), child: const Text('Gamma')),
-                  ElevatedButton(onPressed: () => setState(() => _arrivalDistributionChoice = 4), child: const Text('Uniform')),
-                ],
+              const SizedBox(height: 8),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    ElevatedButton(
+                      onPressed: () => setState(() => _arrivalDistributionChoice = 1),
+                      child: const Text('Exponential'),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: () => setState(() => _arrivalDistributionChoice = 2),
+                      child: const Text('Normal'),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: () => setState(() => _arrivalDistributionChoice = 3),
+                      child: const Text('Gamma'),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: () => setState(() => _arrivalDistributionChoice = 4),
+                      child: const Text('Uniform'),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 16),
               TextField(
