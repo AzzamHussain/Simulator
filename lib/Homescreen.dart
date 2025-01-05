@@ -44,7 +44,10 @@ class _HomeScreenState extends State<HomeScreen> {
       averageMetricsByPriority = tables['averageMetricsByPriority'] ?? [];
       serverUtilization = tables['serverUtilization'] ?? [];
       averageQueuingMetrics = tables['averageQueuingMetrics'] ?? [];
-      interArrivals = customerDetails.map((row) => row["Inter Arrivals"] as int).toList();
+      interArrivals = customerDetails
+          .map((row) => row["Inter Arrivals"] as int)
+          .where((val) => val >= 0) // Avoid negative values
+          .toList();
     });
   }
 

@@ -1,24 +1,19 @@
-// models/customer.dart
-
 class Customer {
-  int customerId;
-  int arrivalTime;
-  int burstTime;
-  int priority;
+  final int customerId;
+  final int arrivalTime;
+  final int burstTime;
+  final int priority;
+  final int interArrival;
   int timeLeft;
   int? serverId;
-  bool isReady;
-  int startTime;
-  int endTime;
-  int completionTime;
-  int turnAroundTime;
-  int interArrival;
-  int waitTime;
-  int responseTime;
-  double utilizationTime;
-  double responseRatio;
-  List<int> startTimes;
-  List<int> endTimes;
+  bool isReady = false;
+  int startTime = 0;
+  int endTime = 0;
+  int turnAroundTime = 0;
+  int waitTime = 0;
+  int responseTime = 0;
+  final List<int> startTimes = [];
+  final List<int> endTimes = [];
 
   Customer({
     required this.customerId,
@@ -26,64 +21,21 @@ class Customer {
     required this.burstTime,
     required this.priority,
     required this.interArrival,
-  })  : timeLeft = burstTime,
-        serverId = null,
-        isReady = false,
-        startTime = 0,
-        endTime = 0,
-        completionTime = 0,
-        turnAroundTime = 0,
-        waitTime = 0,
-        responseTime = 0,
-        utilizationTime = 0.0,
-        responseRatio = 0.0,
-        startTimes = [],
-        endTimes = [];
+  }) : timeLeft = burstTime;
 
   void decrementTimeLeft() {
-    timeLeft -= 1;
+    if (timeLeft > 0) timeLeft--;
   }
 
-  void setStartTime(int timePassed) {
-    startTime = timePassed;
-  }
-
-  void setEndTime(int timePassed) {
-    endTime = timePassed;
-  }
-
-  void setCompletionTime(int timePassed) {
-    completionTime = timePassed;
-  }
-
-  void setTurnAroundTime() {
-    turnAroundTime = completionTime - arrivalTime;
-  }
-
-  void setWaitTime() {
-    waitTime = turnAroundTime - burstTime;
-  }
-
-  void setResponseTime(int timePassed) {
-    responseTime = timePassed - arrivalTime;
-  }
-
-  void setUtilizationTime() {
-    utilizationTime = burstTime / turnAroundTime;
-  }
-
-  void appendStartTimes(int timePassed) {
-    startTimes.add(timePassed);
-  }
-
-  void appendEndTimes(int timePassed) {
-    endTimes.add(timePassed);
-  }
-
-  void setResponseRatio(int timePassed) {
-    responseRatio = ((timePassed - arrivalTime) + burstTime) / burstTime;
-  }
+  void setStartTime(int time) => startTime = time;
+  void setEndTime(int time) => endTime = time;
+  void setTurnAroundTime() => turnAroundTime = endTime - arrivalTime;
+  void setWaitTime() => waitTime = turnAroundTime - burstTime;
+  void setResponseTime(int time) => responseTime = time - arrivalTime;
+  void appendStartTimes(int time) => startTimes.add(time);
+  void appendEndTimes(int time) => endTimes.add(time);
 }
+
 
 class Server {
   int serverId;

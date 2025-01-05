@@ -1,41 +1,24 @@
-// simulation/simulator.dart
-import '../models/customer.dart';
 import 'dart:math';
+import '../models/customer.dart';
 
-// Check if service can proceed
-bool checkShouldServiceProceed(List<Customer> customerList) {
-  return customerList.any((customer) => customer.timeLeft > 0);
-}
+/// Checks if there are customers left to be served.
+bool checkShouldServiceProceed(List<Customer> customerList) =>
+    customerList.any((customer) => customer.timeLeft > 0);
 
-// Serve customers based on highest priority
-String serveHighestPriorityFirst(List<Customer> customers, int numServers,
-    {bool preemptive = true}) {
+/// Simulates a priority-based scheduling algorithm.
+void serveHighestPriorityFirst(List<Customer> customers, int numServers) {
   List<Server> servers = List.generate(numServers, (i) => Server(serverId: i));
   int timePassed = 0;
 
   while (checkShouldServiceProceed(customers)) {
+    // Get customers ready for service
     List<Customer> readyQueue = customers
         .where((customer) =>
             customer.arrivalTime <= timePassed && customer.timeLeft > 0)
         .toList();
 
+    // Sort by priority
     readyQueue.sort((a, b) => a.priority.compareTo(b.priority));
-
-    if (preemptive) {
-      for (var server in servers) {
-        if (server.currentCustomer != null && readyQueue.isNotEmpty) {
-          int highestPriorityWaiting = readyQueue.first.priority;
-          if (highestPriorityWaiting < server.currentCustomer!.priority) {
-            Customer currentCustomer = server.currentCustomer!;
-            currentCustomer.appendEndTimes(timePassed);
-            currentCustomer.serverId = null;
-            server.currentCustomer = null;
-            readyQueue.add(currentCustomer);
-            readyQueue.sort((a, b) => a.priority.compareTo(b.priority));
-          }
-        }
-      }
-    }
 
     for (var server in servers) {
       if (server.currentCustomer == null && readyQueue.isNotEmpty) {
@@ -51,37 +34,35 @@ String serveHighestPriorityFirst(List<Customer> customers, int numServers,
       }
     }
 
+    // Process customers on each server
     servers.where((server) => server.currentCustomer != null).forEach((server) {
       Customer current = server.currentCustomer!;
       current.decrementTimeLeft();
       if (current.timeLeft == 0) {
         current.setEndTime(timePassed + 1);
-        current.setCompletionTime(timePassed + 1);
         current.setTurnAroundTime();
         current.setWaitTime();
-        current.setUtilizationTime();
-        current.appendEndTimes(timePassed + 1);
         server.currentCustomer = null;
       }
     });
 
     timePassed++;
   }
-
-  return "Simulation Completed: Priority-Based Scheduling";
 }
 
-// Serve customers based on First-Come-First-Serve
-String serveFirstComeFirstServe(List<Customer> customers, int numServers) {
+/// Simulates a First-Come-First-Serve (FCFS) scheduling algorithm.
+void serveFirstComeFirstServe(List<Customer> customers, int numServers) {
   List<Server> servers = List.generate(numServers, (i) => Server(serverId: i));
   int timePassed = 0;
 
   while (checkShouldServiceProceed(customers)) {
+    // Get customers ready for service
     List<Customer> readyQueue = customers
         .where((customer) =>
             customer.arrivalTime <= timePassed && customer.timeLeft > 0)
         .toList();
 
+    // Sort by arrival time
     readyQueue.sort((a, b) => a.arrivalTime.compareTo(b.arrivalTime));
 
     for (var server in servers) {
@@ -98,29 +79,24 @@ String serveFirstComeFirstServe(List<Customer> customers, int numServers) {
       }
     }
 
+    // Process customers on each server
     servers.where((server) => server.currentCustomer != null).forEach((server) {
       Customer current = server.currentCustomer!;
       current.decrementTimeLeft();
       if (current.timeLeft == 0) {
         current.setEndTime(timePassed + 1);
-        current.setCompletionTime(timePassed + 1);
         current.setTurnAroundTime();
         current.setWaitTime();
-        current.setUtilizationTime();
-        current.appendEndTimes(timePassed + 1);
         server.currentCustomer = null;
       }
     });
 
     timePassed++;
   }
-
-  return "Simulation Completed: FCFS Scheduling";
 }
 
-// Generate random times based on chosen distribution
-List<int> generateTimes(
-    int count, int distributionChoice, double mean, double stdDev) {
+/// Generates random times based on a given distribution.
+List<int> generateTimes(int count, int distributionChoice, double mean, double stdDev) {
   Random random = Random();
   List<int> times = [];
 
@@ -133,7 +109,7 @@ List<int> generateTimes(
         double u1 = random.nextDouble();
         double u2 = random.nextDouble();
         double z = sqrt(-2 * log(u1)) * cos(2 * pi * u2);
-        times.add((mean + z * stdDev).round());
+        times.add((mean + z * stdDev).round().abs());
         break;
       case 3: // Gamma
         double k = mean / stdDev;
@@ -145,12 +121,10 @@ List<int> generateTimes(
         times.add(sum.round());
         break;
       case 4: // Uniform
-        times.add((random.nextDouble() * (mean + stdDev - (mean - stdDev)) +
-                (mean - stdDev))
-            .round());
+        times.add((random.nextDouble() * (mean + stdDev - (mean - stdDev)) + (mean - stdDev)).round());
         break;
       default:
-        times.add(mean.round()); // Default to mean
+        times.add(mean.round());
         break;
     }
   }
@@ -158,7 +132,7 @@ List<int> generateTimes(
   return times;
 }
 
-// Run the simulation with tables
+/// Runs the simulation and generates the necessary tables.
 Map<String, List<Map<String, dynamic>>> runSimulationWithTables({
   required String simulationType,
   required int endTime,
@@ -169,11 +143,10 @@ Map<String, List<Map<String, dynamic>>> runSimulationWithTables({
   required int numServers,
 }) {
   // Generate arrival and service times
-  List<int> arrivalTimes =
-      generateTimes(100, arrivalDistributionChoice, mean, stdDev);
-  List<int> serviceTimes = generateTimes(
-      arrivalTimes.length, serviceDistributionChoice, mean, stdDev);
+  List<int> arrivalTimes = generateTimes(100, arrivalDistributionChoice, mean, stdDev);
+  List<int> serviceTimes = generateTimes(100, serviceDistributionChoice, mean, stdDev);
 
+  // Generate customer list
   List<Customer> customers = List.generate(
     arrivalTimes.length,
     (i) => Customer(
@@ -185,6 +158,7 @@ Map<String, List<Map<String, dynamic>>> runSimulationWithTables({
     ),
   );
 
+  // Run simulation
   if (simulationType == "1") {
     serveHighestPriorityFirst(customers, numServers);
   } else {
@@ -192,133 +166,59 @@ Map<String, List<Map<String, dynamic>>> runSimulationWithTables({
   }
 
   // Customer Details Table
-  List<Map<String, dynamic>> customerDetails = customers
-      .map((c) => {
-            "S.No": c.customerId,
-            "Inter Arrivals": c.interArrival,
-            "Arrival Time": c.arrivalTime,
-            "Service Time": c.burstTime,
-            "Priorities": c.priority,
-          })
-      .toList();
-
-  // Final Customer Table
-  List<Map<String, dynamic>> finalCustomerTable = customers
-      .map((c) => {
-            "Customer ID": c.customerId,
-            "Arrival Time": c.arrivalTime,
-            "Service Time": c.burstTime,
-            "Priority": c.priority,
-            "Start Time": c.startTime,
-            "End Time": c.endTime,
-            "Turn Around Time": c.turnAroundTime,
-            "Wait Time": c.waitTime,
-            "Response Time": c.responseTime,
-            "Server": c.serverId,
-          })
-      .toList();
-
-  // Average Metrics Table
-  Map<String, dynamic> avgMetrics = {
-    "Avg Turn Around Time":
-        customers.map((c) => c.turnAroundTime).reduce((a, b) => a + b) /
-            customers.length,
-    "Avg Wait Time": customers.map((c) => c.waitTime).reduce((a, b) => a + b) /
-        customers.length,
-    "Avg Response Time":
-        customers.map((c) => c.responseTime).reduce((a, b) => a + b) /
-            customers.length,
-  };
-
-  List<Map<String, dynamic>> averageMetrics = avgMetrics.entries
-      .map((e) => {"Metric": e.key, "Value": e.value})
-      .toList();
-
-  // Average Metrics by Priority Table
-  Map<int, List<Customer>> customersByPriority = {};
-  customers.forEach((c) {
-    customersByPriority.putIfAbsent(c.priority, () => []).add(c);
-  });
-
-  List<Map<String, dynamic>> averageMetricsByPriority =
-      customersByPriority.entries.map((entry) {
-    int priority = entry.key;
-    List<Customer> priorityCustomers = entry.value;
-
+  List<Map<String, dynamic>> customerDetails = customers.map((c) {
     return {
-      "Priority": priority,
-      "Avg InterArrival Time":
-          priorityCustomers.map((c) => c.interArrival).reduce((a, b) => a + b) /
-              priorityCustomers.length,
-      "Avg Service Time":
-          priorityCustomers.map((c) => c.burstTime).reduce((a, b) => a + b) /
-              priorityCustomers.length,
-      "Avg Completion Time":
-          priorityCustomers.map((c) => c.endTime).reduce((a, b) => a + b) /
-              priorityCustomers.length,
-      "Avg Turn Around Time": priorityCustomers
-              .map((c) => c.turnAroundTime)
-              .reduce((a, b) => a + b) /
-          priorityCustomers.length,
-      "Avg Wait Time":
-          priorityCustomers.map((c) => c.waitTime).reduce((a, b) => a + b) /
-              priorityCustomers.length,
-      "Avg Response Time":
-          priorityCustomers.map((c) => c.responseTime).reduce((a, b) => a + b) /
-              priorityCustomers.length,
+      "S.No": c.customerId,
+      "Inter Arrivals": c.interArrival,
+      "Arrival Time": c.arrivalTime,
+      "Service Time": c.burstTime,
+      "Priorities": c.priority,
     };
   }).toList();
 
+  // Final Customer Table
+  List<Map<String, dynamic>> finalCustomerTable = customers.map((c) {
+    return {
+      "Customer ID": c.customerId,
+      "Arrival Time": c.arrivalTime,
+      "Service Time": c.burstTime,
+      "Priority": c.priority,
+      "Start Time": c.startTime,
+      "End Time": c.endTime,
+      "Turn Around Time": c.turnAroundTime,
+      "Wait Time": c.waitTime,
+      "Response Time": c.responseTime,
+      "Server": c.serverId,
+    };
+  }).toList();
+
+  // Average Metrics Table
+  List<Map<String, dynamic>> averageMetrics = [
+    {"Metric": "Avg Turn Around Time", "Value": _calculateAverage(customers.map((c) => c.turnAroundTime).toList())},
+    {"Metric": "Avg Wait Time", "Value": _calculateAverage(customers.map((c) => c.waitTime).toList())},
+    {"Metric": "Avg Response Time", "Value": _calculateAverage(customers.map((c) => c.responseTime).toList())},
+  ];
+
   // Server Utilization Table
-  List<Map<String, dynamic>> serverUtilization = [];
-
-  Map<int, List<Customer>> customersByServer = {};
-  for (var customer in customers) {
-    if (customer.serverId != null) {
-      customersByServer.putIfAbsent(customer.serverId!, () => []).add(customer);
-    }
-  }
-
-  customersByServer.forEach((serverId, serverCustomers) {
-    double totalServiceTime = serverCustomers
-        .map((c) => c.burstTime)
-        .reduce((a, b) => a + b)
-        .toDouble();
-    double utilization = totalServiceTime / endTime;
-
-    serverUtilization.add({
-      "Server ID": serverId,
-      "Utilization": "${(utilization * 100).toStringAsFixed(2)}%"
-    });
+  List<Map<String, dynamic>> serverUtilization = List.generate(numServers, (serverId) {
+    int busyTime = customers
+        .where((c) => c.serverId == serverId)
+        .fold(0, (sum, c) => sum + c.burstTime);
+    double utilization = (busyTime / endTime) * 100;
+    return {"Server ID": serverId, "Utilization": "${utilization.toStringAsFixed(2)}%"};
   });
 
-// Average Queuing Metrics Table
-Map<String, dynamic> avgQueueMetrics = {
-  "Avg Queue Length": customers
-      .where((c) => c.waitTime > 0)
-      .map((c) => c.waitTime)
-      .reduce((a, b) => a + b)
-      .toDouble() /
-      customers.length,
-  "Avg Waiting Time in Queue": customers
-      .map((c) => c.waitTime)
-      .reduce((a, b) => a + b)
-      .toDouble() /
-      customers.length,
-};
+  // Return all tables
+  return {
+    "customerDetails": customerDetails,
+    "finalCustomerTable": finalCustomerTable,
+    "averageMetrics": averageMetrics,
+    "serverUtilization": serverUtilization,
+  };
+}
 
-List<Map<String, dynamic>> averageQueuingMetrics = avgQueueMetrics.entries
-    .map((entry) => {"Metric": entry.key, "Value": entry.value.toStringAsFixed(2)})
-    .toList();
-
-// Add to the returned tables
-return {
-  "customerDetails": customerDetails,
-  "finalCustomerTable": finalCustomerTable,
-  "averageMetrics": averageMetrics,
-  "averageMetricsByPriority": averageMetricsByPriority,
-  "serverUtilization": serverUtilization,
-  "averageQueuingMetrics": averageQueuingMetrics,
-};
-
+/// Utility function to calculate average.
+double _calculateAverage(List<int> values) {
+  if (values.isEmpty) return 0.0;
+  return values.reduce((a, b) => a + b) / values.length;
 }
